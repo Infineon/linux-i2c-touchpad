@@ -1,0 +1,46 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+* Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
+* an affiliate of Cypress Semiconductor Corporation.
+*
+* This program is free software; you can redistribute it and/or
+* modify it under the terms of the GNU General Public License
+* as published by the Free Software Foundation; either version 2
+* of the License, or (at your option) any later version.
+*
+* This program is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, see <https://www.gnu.org/licenses/>
+*/
+/dts-v1/;
+/plugin/;
+
+
+/ {
+	compatible = "brcm,bcm2711";
+
+	fragment@0 {
+		target-path = "/soc/i2c@7e804000";
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			psoc4_capsense@D {
+				compatible = "infineon,psoc4-capsense";
+				reg = <0x0D>;
+				interrupt-parent = <&gpio>;
+				interrupts = <17 0x02>; // GPIO 17, Falling edge interrupt
+				status = "okay";
+
+				/* Touchpad parameters */
+				touchpad-max-x = <250>;
+				touchpad-max-y = <200>;
+				touchpad-max-pressure = <250>;
+			};
+		};
+	};
+};
