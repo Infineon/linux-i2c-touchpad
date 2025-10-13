@@ -1,17 +1,21 @@
 # Linux I2C Touchpad Driver
 
-## What's Included?
-
-This is an initial release provides a Linux kernel driver sources for the I2C Touchpad based on PSOC4000T CapSense solution, enabling I2C communication and integration with the Linux input subsystem.
-
 Refer to the [README.md](./README.md) and the Linux I2C Touchpad driver [Reference Guide](./doc/REFERENCE_GUIDE.md) for a complete description.
+
+## What's Changed?
+- Added DFU functionality via I2C
+- Added IRQ notifications with Netlink
+- Improvements for integration with the Linux input subsystem
+- Some sysfs attributes containing raw data have been moved to debugfs
+- Minor updates to regmap
+- Updated user documentation
 
 ## Known Issues or Limitations
 - Tested only on Raspberry Pi 4 (RPi4)
 - Not validated with I2C clock speeds above 400 kHz (1 MHz not tested)
 
 ## Defect Fixes
-- Initial release
+- Fixed "How to Build" steps in [HOW_TO_BUILD.md](./doc/HOW_TO_BUILD.md)
 
 ## Supported Software and Tools
 
@@ -19,7 +23,7 @@ This driver was validated with the following software and tools:
 
 | Software/Tool                | Version         |
 |------------------------------|-----------------|
-| Linux Kernel                 | 6.10       	 |
+| Linux Kernel                 | 6.12       	 |
 | Device Tree Compiler (dtc)   | 1.6.1           |
 | Arm GNU Toolchain            | 14.2.1 20241119 |
 

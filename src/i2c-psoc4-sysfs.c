@@ -1,21 +1,49 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
-* Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
-* an affiliate of Cypress Semiconductor Corporation.
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, see <https://www.gnu.org/licenses/>
-*/
+ * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
+ * an affiliate of Cypress Semiconductor Corporation.
+ *
+ * Licensed under either of
+ *
+ * GNU General Public License, Version 2.0 <https://www.gnu.org/licenses/gpl-2.0.html>
+ * MIT license  <http://opensource.org/licenses/MIT>
+ *
+ * at your option.
+ *
+ * When Licensed under the GNU General Public License, Version 2.0 (the "License");
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses/gpl-2.0.html>
+ *
+ * When licensed under the MIT license;
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ * software and associated documentation files (the “Software”), to deal in the Software
+ * without restriction, including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+ * to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include "i2c-psoc4-driver.h"
 
@@ -42,7 +70,7 @@ static ssize_t rst_cause_show(struct device *dev, struct device_attribute *attr,
 
 	int ret = psoc4_read_register(client, REG_RST_CAUSE, &value, REG_RST_CAUSE_SIZE);
 
-	if (value < 0)
+	if (ret < 0)
 		return -EIO;
 
 	return sprintf(buf, "0x%02x\n", value);
@@ -437,155 +465,60 @@ static ssize_t sns_ref_rate_alr_store(struct device *dev, struct device_attribut
 }
 static DEVICE_ATTR_RW(sns_ref_rate_alr);
 
-// Sysfs attribute for TOUCH0_POS (read operation)
-// TODO: Move this attribute to debugfs after touchscreen representation is implemented
-static ssize_t touch0_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
+
+// Sysfs attribute for DFU update operation (read operation)
+static ssize_t dfu_update_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
+	bool dfu_status = psoc4_dfu_get_status();
+
+	return sprintf(buf, "%s\n", dfu_status ? "Success" : "Failure");
+}
+
+// Sysfs attribute for DFU update operation (write operation)
+static ssize_t dfu_update_store(struct device *dev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	struct path p;
 	struct i2c_client *client = to_i2c_client(dev);
-	u16 x, y, z;
+	static char dfu_file_path[PATH_MAX];
 	int ret;
 
-	ret = psoc4_read_xyz_coords(client, REG_TCH0_POS, &x, &y, &z);
-	if (ret < 0)
-		return -EIO;
-
-	return sprintf(buf, "%u %u %u\n", x, y, z);
-}
-static DEVICE_ATTR_RO(touch0_pos);
-
-// Sysfs attribute for TOUCH1_POS (read operation)
-// TODO: Move this attribute to debugfs after touchscreen representation is implemented
-static ssize_t touch1_pos_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	u16 x, y, z;
-	int ret;
-
-	ret = psoc4_read_xyz_coords(client, REG_TCH1_POS, &x, &y, &z);
-	if (ret < 0)
-		return -EIO;
-
-	return sprintf(buf, "%u %u %u\n", x, y, z);
-}
-static DEVICE_ATTR_RO(touch1_pos);
-
-// Sysfs attribute for NUM_TOUCH (read operation)
-static ssize_t num_touch_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	u8 value;
-	int ret;
-
-	ret = psoc4_read_register(client, REG_NUM_TOUCH, &value, REG_NUM_TOUCH_SIZE);
-
-	if (ret < 0)
-		return -EIO;
-
-	return sprintf(buf, "%u\n", value);
-}
-static DEVICE_ATTR_RO(num_touch);
-
-// Sysfs attribute for SNS_RAW (read operation)
-static ssize_t sns_raw_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	u8 num_sensors;
-	u16 *raw_data;
-	int ret, i, offset = 0;
-
-	// Read the number of sensors
-	ret = psoc4_read_register(client, REG_NUM_SNS, &num_sensors, REG_NUM_SNS_SIZE);
-	if (ret < 0)
-		return -EIO;
-
-	raw_data = kzalloc(num_sensors * 2, GFP_KERNEL);
-	if (!raw_data)
-		return -ENOMEM;
-
-	// Read SNS_RAW data
-	ret = psoc4_read_register(client, REG_SNS_RAW, (u8 *)raw_data,
-								num_sensors * sizeof(*raw_data));
-	if (ret < 0) {
-		kfree(raw_data);
-		return -EIO;
+	if (count > PATH_MAX) {
+		dev_err(&client->dev, "DFU file path too long\n");
+		return -EINVAL;
 	}
 
-	// Format the output
-	for (i = 0; i < num_sensors; i++)
-		offset += sprintf(buf + offset, "0x%04x ", le16_to_cpu(raw_data[i]));
+	strscpy(dfu_file_path, buf, count);
+	if (dfu_file_path[count - 1] == '\n')
+		dfu_file_path[count - 1] = '\0';
+	else
+		dfu_file_path[count] = '\0';
 
-	kfree(raw_data);
-	return offset;
-}
-static DEVICE_ATTR_RO(sns_raw);
-
-// Sysfs attribute for SNS_BSLN (read operation)
-static ssize_t sns_bsln_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	u8 num_sensors;
-	u16 *bsln_data;
-	int ret, i, offset = 0;
-
-	// Read the number of sensors
-	ret = psoc4_read_register(client, REG_NUM_SNS, &num_sensors, REG_NUM_SNS_SIZE);
-	if (ret < 0)
-		return -EIO;
-
-	bsln_data = kzalloc(num_sensors * 2, GFP_KERNEL);
-	if (!bsln_data)
-		return -ENOMEM;
-
-	// Read SNS_BSLN data
-	ret = psoc4_read_register(client, REG_SNS_BSLN(num_sensors), (u8 *)bsln_data,
-								num_sensors * sizeof(*bsln_data));
+	ret = kern_path(dfu_file_path, LOOKUP_FOLLOW, &p);
 	if (ret < 0) {
-		kfree(bsln_data);
-		return -EIO;
+		dev_err(&client->dev,
+				"File does not exist or cannot be followed: %s\n",
+				dfu_file_path);
+		return ret;
 	}
 
-	// Format the output
-	for (i = 0; i < num_sensors; i++)
-		offset += sprintf(buf + offset, "0x%04x ", le16_to_cpu(bsln_data[i]));
-
-	kfree(bsln_data);
-	return offset;
-}
-static DEVICE_ATTR_RO(sns_bsln);
-
-// Sysfs attribute for SNS_CP_MEASURE (read operation)
-static ssize_t sns_cp_measure_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	u8 num_sensors;
-	u32 *cp_data;
-	int ret, i, offset = 0;
-
-	// Read the number of sensors
-	ret = psoc4_read_register(client, REG_NUM_SNS, &num_sensors, REG_NUM_SNS_SIZE);
-	if (ret < 0)
-		return -EIO;
-
-	cp_data = kzalloc(num_sensors * 4, GFP_KERNEL);
-	if (!cp_data)
-		return -ENOMEM;
-
-	// Read SNS_CP_MEASURE data
-	ret = psoc4_read_register(client, REG_SNS_CP_MEASURE(num_sensors), (u8 *)cp_data,
-								num_sensors * sizeof(*cp_data));
+	ret = psoc4_dfu_start(client);
 	if (ret < 0) {
-		kfree(cp_data);
-		return -EIO;
+		dev_err(&client->dev, "Failed to start DFU update: %d\n", ret);
+		return ret;
 	}
 
-	// Format the output
-	for (i = 0; i < num_sensors; i++)
-		offset += sprintf(buf + offset, "0x%08x ", le32_to_cpu(cp_data[i]));
+	dev_info(&client->dev, "DFU update started with file: %s\n", dfu_file_path);
 
-	kfree(cp_data);
-	return offset;
+	ret = psoc4_dfu_program(dfu_file_path);
+	if (ret < 0) {
+		dev_err(&client->dev, "DFU programming failed: %d\n", ret);
+		return ret;
+	}
+
+	return count;
 }
-static DEVICE_ATTR_RO(sns_cp_measure);
+static DEVICE_ATTR_RW(dfu_update);
 
 // Function to create sysfs entries
 int psoc4_sysfs_create(struct i2c_client *client)
@@ -677,42 +610,12 @@ int psoc4_sysfs_create(struct i2c_client *client)
 	if (ret)
 		goto remove_sns_ref_rate_act;
 
-	ret = device_create_file(&client->dev, &dev_attr_touch0_pos);
+	ret = device_create_file(&client->dev, &dev_attr_dfu_update);
 	if (ret)
 		goto remove_sns_ref_rate_alr;
 
-	ret = device_create_file(&client->dev, &dev_attr_touch1_pos);
-	if (ret)
-		goto remove_touch0_pos;
-
-	ret = device_create_file(&client->dev, &dev_attr_num_touch);
-	if (ret)
-		goto remove_touch1_pos;
-
-	ret = device_create_file(&client->dev, &dev_attr_sns_raw);
-	if (ret)
-		goto remove_num_touch;
-
-	ret = device_create_file(&client->dev, &dev_attr_sns_bsln);
-	if (ret)
-		goto remove_sns_raw;
-
-	ret = device_create_file(&client->dev, &dev_attr_sns_cp_measure);
-	if (ret)
-		goto remove_sns_bsln;
-
 	return 0;
 
-remove_sns_bsln:
-	device_remove_file(&client->dev, &dev_attr_sns_bsln);
-remove_sns_raw:
-	device_remove_file(&client->dev, &dev_attr_sns_raw);
-remove_num_touch:
-	device_remove_file(&client->dev, &dev_attr_num_touch);
-remove_touch1_pos:
-	device_remove_file(&client->dev, &dev_attr_touch1_pos);
-remove_touch0_pos:
-	device_remove_file(&client->dev, &dev_attr_touch0_pos);
 remove_sns_ref_rate_alr:
 	device_remove_file(&client->dev, &dev_attr_sns_ref_rate_alr);
 remove_sns_ref_rate_act:
@@ -778,12 +681,7 @@ void psoc4_sysfs_remove(struct i2c_client *client)
 	device_remove_file(&client->dev, &dev_attr_sns_filt_cfg);
 	device_remove_file(&client->dev, &dev_attr_sns_ref_rate_act);
 	device_remove_file(&client->dev, &dev_attr_sns_ref_rate_alr);
-	device_remove_file(&client->dev, &dev_attr_touch0_pos);
-	device_remove_file(&client->dev, &dev_attr_touch1_pos);
-	device_remove_file(&client->dev, &dev_attr_num_touch);
-	device_remove_file(&client->dev, &dev_attr_sns_raw);
-	device_remove_file(&client->dev, &dev_attr_sns_bsln);
-	device_remove_file(&client->dev, &dev_attr_sns_cp_measure);
+	device_remove_file(&client->dev, &dev_attr_dfu_update);
 
 	sysfs_remove_link(&client->dev.parent->kobj, "psoc4-capsense");
 }

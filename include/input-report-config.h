@@ -45,16 +45,23 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef PSOC4_I2C_H
-#define PSOC4_I2C_H
+#ifndef INPUT_REPORT_CONFIG_H
+#define INPUT_REPORT_CONFIG_H
 
-#include <linux/i2c.h>
+// Enable/disable legacy coordinates reporting to input subsystem
+#define REPORT_LEGACY_COORDS		0
 
-/* Function prototypes for PSOC4 I2C operations */
-int i2c_safe_transfer(struct i2c_client *client, struct i2c_msg *msgs, int num);
-int psoc4_read_register(struct i2c_client *client, u8 reg_address, u8 *buffer, int count);
-int psoc4_write_register(struct i2c_client *client, u8 reg_address, const u8 *data, int count);
-int psoc4_read_xyz_coords(struct i2c_client *client, u8 reg, u16 *x, u16 *y, u16 *z);
-int psoc4_read_gestures(struct i2c_client *client, u32 *gestures);
+// Enable/disable ABS_PRESSURE/ABS_MT_PRESSURE reporting to input subsystem
+#define REPORT_PRESSURE				0
 
-#endif // PSOC4_I2C_H
+// Gesture key mappings
+#define GEST_SINGLE_CLICK_KEY	KEY_PLAYPAUSE
+#define GEST_DOUBLE_CLICK_KEY	KEY_SHUFFLE
+#define GEST_SWIPE_UP_KEY		KEY_VOLUMEUP
+#define GEST_SWIPE_DOWN_KEY		KEY_VOLUMEDOWN
+#define GEST_SWIPE_RIGHT_KEY	KEY_REWIND
+#define GEST_SWIPE_LEFT_KEY		KEY_FASTFORWARD
+#define GEST_TOUCHDOWN_KEY		BTN_TOUCH
+#define GEST_LIFTOFF_KEY		BTN_TOUCH
+
+#endif /* INPUT_REPORT_CONFIG_H */

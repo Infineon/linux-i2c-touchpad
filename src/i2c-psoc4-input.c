@@ -1,23 +1,52 @@
-// SPDX-License-Identifier: GPL-2.0
+// SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
-* Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
-* an affiliate of Cypress Semiconductor Corporation.
-*
-* This program is free software; you can redistribute it and/or
-* modify it under the terms of the GNU General Public License
-* as published by the Free Software Foundation; either version 2
-* of the License, or (at your option) any later version.
-*
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this program; if not, see <https://www.gnu.org/licenses/>
-*/
+ * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
+ * an affiliate of Cypress Semiconductor Corporation.
+ *
+ * Licensed under either of
+ *
+ * GNU General Public License, Version 2.0 <https://www.gnu.org/licenses/gpl-2.0.html>
+ * MIT license  <http://opensource.org/licenses/MIT>
+ *
+ * at your option.
+ *
+ * When Licensed under the GNU General Public License, Version 2.0 (the "License");
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <https://www.gnu.org/licenses/gpl-2.0.html>
+ *
+ * When licensed under the MIT license;
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this
+ * software and associated documentation files (the “Software”), to deal in the Software
+ * without restriction, including without limitation the rights to use, copy, modify, merge,
+ * publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons
+ * to whom the Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all copies or
+ * substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ */
 
 #include "i2c-psoc4-driver.h"
+#include "input-report-config.h"
 
 static struct input_dev *touchpad_input_dev;
 
@@ -44,12 +73,18 @@ int psoc4_input_dev_create(struct i2c_client *client)
 	// Using ABS_MT_* types
 	input_set_abs_params(touchpad_input_dev, ABS_MT_POSITION_X, 0, max_x, 0, 0);
 	input_set_abs_params(touchpad_input_dev, ABS_MT_POSITION_Y, 0, max_y, 0, 0);
+#if REPORT_PRESSURE
 	input_set_abs_params(touchpad_input_dev, ABS_MT_PRESSURE, 0, max_pressure, 0, 0);
+#endif
 
+#if REPORT_LEGACY_COORDS
 	// Legacy coordinates can also be preserved separately if needed
 	input_set_abs_params(touchpad_input_dev, ABS_X, 0, max_x, 0, 0);
 	input_set_abs_params(touchpad_input_dev, ABS_Y, 0, max_y, 0, 0);
+#if REPORT_PRESSURE
 	input_set_abs_params(touchpad_input_dev, ABS_PRESSURE, 0, max_pressure, 0, 0);
+#endif
+#endif
 
 	// Init slots for multi-touch
 	ret = input_mt_init_slots(touchpad_input_dev, 2, INPUT_MT_POINTER);
@@ -99,25 +134,33 @@ void psoc4_input_report_coord(struct i2c_client *client, u8 num_touches,
 		return;
 	}
 
-	for (unsigned int slot = 0; slot < NUM_TOUCH_SLOTS; slot++) {
+	for (unsigned int slot = 0; slot < num_touches; slot++) {
 		input_mt_slot(touchpad_input_dev, slot);
-
-		if (slot <= (num_touches - 1)) {
-			input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, true);
-			input_report_abs(touchpad_input_dev, ABS_MT_POSITION_X, touches[slot].x);
-			input_report_abs(touchpad_input_dev, ABS_MT_POSITION_Y, touches[slot].y);
-			input_report_abs(touchpad_input_dev, ABS_MT_PRESSURE, touches[slot].z);
-		} else {
-			input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, false);
-		}
+		input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, true);
+		input_report_abs(touchpad_input_dev, ABS_MT_POSITION_X, touches[slot].x);
+		input_report_abs(touchpad_input_dev, ABS_MT_POSITION_Y, touches[slot].y);
+	#if REPORT_PRESSURE
+		input_report_abs(touchpad_input_dev, ABS_MT_PRESSURE, touches[slot].z);
+	#endif
 	}
 
+	for (int slot = 0; slot < NUM_TOUCH_SLOTS; slot++) {
+		input_mt_slot(touchpad_input_dev, slot);
+
+		if (slot > (num_touches - 1))
+			input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, false);
+	}
+
+#if REPORT_LEGACY_COORDS
 	// Legacy coordinates for the first touch point
 	if (num_touches >= 1) {
 		input_report_abs(touchpad_input_dev, ABS_X, touches[0].x);
 		input_report_abs(touchpad_input_dev, ABS_Y, touches[0].y);
+	#if REPORT_PRESSURE
 		input_report_abs(touchpad_input_dev, ABS_PRESSURE, touches[0].z);
+	#endif
 	}
+#endif
 
 	input_sync(touchpad_input_dev);
 }
@@ -166,19 +209,19 @@ void psoc4_input_report_gesture(struct i2c_client *client, u32 gestures)
 
 		switch (flick_direction) {
 		case GEST_DIRECTION_UP:
-			dev_info(&client->dev, "One-finger flick gesture detected: UP\n");
+			dev_dbg(&client->dev, "One-finger flick gesture detected: UP\n");
 			report_instant_event(GEST_SWIPE_UP_KEY);
 			break;
 		case GEST_DIRECTION_DOWN:
-			dev_info(&client->dev, "One-finger flick gesture detected: DOWN\n");
+			dev_dbg(&client->dev, "One-finger flick gesture detected: DOWN\n");
 			report_instant_event(GEST_SWIPE_DOWN_KEY);
 			break;
 		case GEST_DIRECTION_RIGHT:
-			dev_info(&client->dev, "One-finger flick gesture detected: RIGHT\n");
+			dev_dbg(&client->dev, "One-finger flick gesture detected: RIGHT\n");
 			report_instant_event(GEST_SWIPE_RIGHT_KEY);
 			break;
 		case GEST_DIRECTION_LEFT:
-			dev_info(&client->dev, "One-finger flick gesture detected: LEFT\n");
+			dev_dbg(&client->dev, "One-finger flick gesture detected: LEFT\n");
 			report_instant_event(GEST_SWIPE_LEFT_KEY);
 			break;
 		default:
