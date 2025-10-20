@@ -62,4 +62,4 @@ For more information, refer to the following documents:
 * Compatible CE: [mtb-example-psoc4-msclp-smart-glass-touchpad](https://github.com/Infineon/mtb-example-psoc4-msclp-smart-glass-touchpad/)
 
 ---
-© 2025, Cypress Semiconductor Corporation (an Infineon company) or an affiliate of Cypress Semiconductor Corporation.
+© 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG. All rights reserved.

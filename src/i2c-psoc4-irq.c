@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
- * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.
+ * Copyright (C) 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG.
+ * All rights reserved.
  *
  * Licensed under either of
  *
@@ -166,6 +166,16 @@ static irqreturn_t psoc4_irq_handler(int irq, void *dev_id)
 		if (ret < 0)
 			return IRQ_NONE; // No gestures detected, exit early
 	}
+	if (int_status & INT_STATUS_LIFTOFF_TCHDWN) {
+		dev_dbg(&client->dev, "Liftoff/Touchdown Detected interrupt\n");
+		snprintf(msg, sizeof(msg), "LIFTOFF_TOUCHDOWN_DETECTED");
+		psoc4_send_nl_msg(msg);
+#if defined(TOUCHDOWN_LIFTOFF_ON_IRQ)
+		ret = psoc4_liftoff_touchdown_handler(client);
+		if (ret < 0)
+			return IRQ_NONE; // No liftoff/touchdown event handled, exit early
+#endif /* #if defined(TOUCHDOWN_LIFTOFF_ON_IRQ) */
+	}
 	if (int_status & INT_STATUS_APP_ERROR) {
 		dev_err(&client->dev, "PSOC4 FW application Error interrupt\n");
 		snprintf(msg, sizeof(msg), "APP_ERROR");
@@ -282,5 +292,24 @@ int psoc4_gesture_detected_handler(struct i2c_client *client)
 	dev_info(&client->dev, "Gestures detected: 0x%08x\n", gestures);
 
 	psoc4_input_report_gesture(client, gestures); // Report gestures to input subsystem
+	return 0;
+}
+
+int psoc4_liftoff_touchdown_handler(struct i2c_client *client)
+{
+	int ret;
+
+	u8 num_touches;
+
+	ret = psoc4_read_register(client, REG_NUM_TOUCH, &num_touches, REG_NUM_TOUCH_SIZE);
+	if (ret < 0) {
+		dev_err(&client->dev, "Failed to read number of touches\n");
+		psoc4_irq_clear(client);
+		return ret;
+	}
+	dev_dbg(&client->dev, "Number of touches detected: %u\n", num_touches);
+
+	// Report liftoff/touchdown to input subsystem
+	psoc4_input_report_liftoff_touchdown(client, num_touches);
 	return 0;
 }

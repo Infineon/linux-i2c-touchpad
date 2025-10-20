@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR MIT */
 /*
- * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.
+ * Copyright (C) 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG.
+ * All rights reserved.
  *
  * Licensed under either of
  *
@@ -89,6 +89,7 @@
 #define INT_STATUS_TEST_RESULT_READY 0x04 // Test Result Ready
 #define INT_STATUS_SENSING_RUNNING   0x08 // Sensing App Running
 #define INT_STATUS_GEST_DETECTED     0x10 // Gesture Detected
+#define INT_STATUS_LIFTOFF_TCHDWN    0x20 // Liftoff/Touchdown Detected
 #define INT_STATUS_APP_ERROR         0x80 // Application Error
 
 // Gestures status bit masks
@@ -153,6 +154,8 @@ void psoc4_input_dev_remove(struct i2c_client *client);
 void psoc4_input_report_coord(struct i2c_client *client, u8 num_touches,
 								struct psoc4_touch *touches);
 void psoc4_input_report_gesture(struct i2c_client *client, u32 gestures);
+void psoc4_input_report_liftoff_touchdown(struct i2c_client *client,
+								u8 num_touches);
 void report_instant_event(u32 key_code);
 
 // IRQ functions
@@ -160,6 +163,7 @@ int psoc4_irq_register(struct i2c_client *client);
 int psoc4_irq_clear(struct i2c_client *client);
 int psoc4_touch_detected_handler(struct i2c_client *client);
 int psoc4_gesture_detected_handler(struct i2c_client *client);
+int psoc4_liftoff_touchdown_handler(struct i2c_client *client);
 
 // Netlink functions
 void psoc4_nl_exit(void);

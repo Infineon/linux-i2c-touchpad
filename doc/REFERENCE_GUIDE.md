@@ -58,8 +58,8 @@ After loading or unloading the driver, you can check the kernel logs for message
 | `short_test`       | Write-only  | Triggers a Short Test.                                                                         | `sudo sh -c 'echo "1" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/short_test'` | 1 is the only valid option, as setting it to 1 simply triggers the execution of this action. |
 | `bootloader_jump`  | Write-only  | Triggers a jump to the bootloader.                                                             | `sudo sh -c 'echo "1" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/bootloader_jump'` | 1 is the only valid option, as setting it to 1 simply triggers the execution of this action. |
 | `test_status`      | Read-only   | Displays the test status and shorted sensor ID if applicable.                                  | `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/test_status`                     | Test status:<br>0x00: Success<br>0x01: Reserved<br>0x02: CAPSENSE™ hardware was busy<br>0x05: Test failed to complete<br>0x0F: Short detected (Short test only). Indicates a short on the Pin if TEST_STATUS = 0x0F. <br> To identify which specific pin is detected as short refer [3.1. Package Specific Pin Value for short_test](#31-pin-list-with-shorted_sns_id-values). |
-| `int_src_en`       | Read/Write  | Enables or disables interrupt sources.                                                         | Write: `sudo sh -c 'echo "1F" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_src_en'`<br>Read: `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_src_en` | 0x01: Scan Frame Result Ready<br>0x02: Touch Detected<br>0x04: Test Result Ready<br>0x08: Sensing App Running<br>0x10: Gesture Detected<br>0x80: Application Error<br><br>Default: 0x9F (All Enabled) |
-| `int_status`       | Read/Write  | Displays or clears interrupt status.                                                           | Write: `sudo sh -c 'echo "00" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_status'`<br>Read: `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_status` | 0x00: No pending interrupts<br>0x01: Scan-Complete<br>0x02: Touch Detected<br>0x04: Test Result Ready<br>0x08: Sensing App Running<br>0x10: Gesture Detected<br>0x80: Application Error<br><br>Default: 0x00 |
+| `int_src_en`       | Read/Write  | Enables or disables interrupt sources.                                                         | Write: `sudo sh -c 'echo "1F" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_src_en'`<br>Read: `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_src_en` | 0x01: Scan Frame Result Ready<br>0x02: Touch Detected<br>0x04: Test Result Ready<br>0x08: Sensing App Running<br>0x10: Gesture Detected<br>0x20: Liftoff or touchdown detected<br>0x80: Application Error<br><br>Default: 0xBF (All Enabled) |
+| `int_status`       | Read/Write  | Displays or clears interrupt status.                                                           | Write: `sudo sh -c 'echo "00" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_status'`<br>Read: `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/int_status` | 0x00: No pending interrupts<br>0x01: Scan-Complete<br>0x02: Touch Detected<br>0x04: Test Result Ready<br>0x08: Sensing App Running<br>0x10: Gesture Detected<br>0x20: Liftoff or touchdown detected<br>0x80: Application Error<br><br>Default: 0x00 |
 | `error_status`     | Read-only   | Displays the error status of the device.                                                      | `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/error_status`                    | 0x00: No errors<br>0x01: Requested parameter is invalid<br>0x02: I2C Timeout Expired<br>0x04: CAPSENSE Auto-Calibration Failed |
 | `scan_mode`        | Read-only   | Displays the current scan mode of the device.                                                  | `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/scan_mode`                       | 0x00: Not scanning<br>0x01: Active scanning<br>0x02: Active-Low-Refresh (ALR) rate scanning<br>0x04: Wake-on-touch scanning<br> |
 | `shield_en`        | Read/Write  | Enables or disables the shield.                                                               | Write: `sudo sh -c 'echo "01" > /sys/bus/i2c/devices/i2c-1/psoc4-capsense/shield_en'`<br>Read: `cat /sys/bus/i2c/devices/i2c-1/psoc4-capsense/shield_en` | 0x00: Disables the shield<br>0x01: Enables the shield<br><br>Default: 0x00 |
@@ -123,8 +123,12 @@ The driver integrates with the Linux input subsystem and registers an input devi
 - Supports up to 2 simultaneous touch points (multi-touch).
 - Each touch point reports X, Y, and Z (pressure) coordinates.
 - The driver uses multi-touch (ABS_MT_POSITION_X, ABS_MT_POSITION_Y) axes.
-- You can enable legacy (ABS_X, ABS_Y) with REPORT_LEGACY_COORDS define in `input-report-config.h`
-- You can enable ABS_PRESSURE and ABS_MT_PRESSURE with REPORT_PRESSURE define in `input-report-config.h`
+- You can enable legacy (ABS_X, ABS_Y) by adding `REPORT_LEGACY_COORDS` to the `BUILD_OPTIONS` variable in your Makefile (or passing it via command line). This will define the feature at build time.
+- You can enable ABS_PRESSURE and ABS_MT_PRESSURE by adding `REPORT_PRESSURE` to the `BUILD_OPTIONS` variable in your Makefile (or passing it via command line). This will define the feature at build time.
+```Makefile
+BUILD_OPTIONS += REPORT_LEGACY_COORDS
+BUILD_OPTIONS += REPORT_PRESSURE
+```
 
 #### Gesture Event Reporting
 - Single and double tap gestures are mapped to standard Linux key events (e.g., `KEY_PLAYPAUSE`, `KEY_SHUFFLE`).
@@ -133,6 +137,11 @@ The driver integrates with the Linux input subsystem and registers an input devi
 - All gesture events are reported instantly to the input subsystem, allowing user-space applications to react accordingly.
 
 > **Note:** The Linux key codes used for gesture events (e.g., `KEY_PLAYPAUSE`, `KEY_SHUFFLE`, `KEY_VOLUMEUP`, etc.) are defined in `input-report-config.h` and may be remapped as needed for your application.
+
+> **Note:** The Touchdown and liftoff events can be controlled via mutually exclusive build options in `Makefile`:
+> - `BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_GESTURE`: touchdown/liftoff events are generated immediately after touchdown/liftoff are detected as gestures.
+> - `BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_IRQ`: touchdown/liftoff events are generated after touchdown/liftoff interrupt is received.
+> <br><br>Only one of these options should be enabled at a time.
 
 #### Example: Testing with evtest
 
@@ -164,6 +173,7 @@ The driver sends event notifications (interrupts) to user space via a netlink so
 - GESTURE_DETECTED — gesture detected
 - TEST_RESULT_READY — test result ready
 - SENSING_RUNNING — sensing app running
+- LIFTOFF_TOUCHDOWN_DETECTED - touchdown/liftoff on irq detected
 - APP_ERROR — application error
 
 **How to subscribe to netlink events:**
@@ -213,4 +223,4 @@ Now, when the driver sends netlink events (e.g., touch, gesture, scan complete),
 > **Note:** You can also use C or other languages to work with netlink sockets. The key steps are: open a netlink socket with protocol 31, send any message to register, and read incoming messages.
 
 ---
-© 2025, Cypress Semiconductor Corporation (an Infineon company) or an affiliate of Cypress Semiconductor Corporation.
+© 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG. All rights reserved.

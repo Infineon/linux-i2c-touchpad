@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
- * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.
+ * Copyright (C) 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG.
+ * All rights reserved.
  *
  * Licensed under either of
  *
@@ -46,6 +46,10 @@
  */
 
 #include "i2c-psoc4-driver.h"
+
+#if defined(TOUCHDOWN_LIFTOFF_ON_GESTURE) && defined(TOUCHDOWN_LIFTOFF_ON_IRQ)
+#error "Only one of TOUCHDOWN_LIFTOFF_ON_GESTURE or TOUCHDOWN_LIFTOFF_ON_IRQ can be defined at a time!"
+#endif
 
 int init_psoc4_config(struct i2c_client *client)
 {
@@ -148,4 +152,4 @@ module_i2c_driver(psoc4_i2c_driver);
 MODULE_LICENSE("Dual MIT/GPL");
 MODULE_AUTHOR("Cypress Semiconductor Corporation (an Infineon company)");
 MODULE_DESCRIPTION("I2C Touchpad driver for solution based on PSOC4xxxT MCU and CapSense MW");
-MODULE_VERSION("1.1.0");
+MODULE_VERSION("1.2.0");

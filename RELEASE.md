@@ -3,19 +3,17 @@
 Refer to the [README.md](./README.md) and the Linux I2C Touchpad driver [Reference Guide](./doc/REFERENCE_GUIDE.md) for a complete description.
 
 ## What's Changed?
-- Added DFU functionality via I2C
-- Added IRQ notifications with Netlink
-- Improvements for integration with the Linux input subsystem
-- Some sysfs attributes containing raw data have been moved to debugfs
-- Minor updates to regmap
-- Updated user documentation
+- Added new interrupt source to report Touchdown and Liftoff events
+- Added Makefile options to enable configurable builds
+- Updates to user documentation
+- Copyright's updated
 
 ## Known Issues or Limitations
 - Tested only on Raspberry Pi 4 (RPi4)
 - Not validated with I2C clock speeds above 400 kHz (1 MHz not tested)
 
 ## Defect Fixes
-- Fixed "How to Build" steps in [HOW_TO_BUILD.md](./doc/HOW_TO_BUILD.md)
+- No bug fixes
 
 ## Supported Software and Tools
 
@@ -35,4 +33,4 @@ For more information, refer to the following documents:
 * [Linux I2C Touchpad driver Reference Guide](./doc/REFERENCE_GUIDE.md)
 
 ---
-© 2025, Cypress Semiconductor Corporation (an Infineon company) or an affiliate of Cypress Semiconductor Corporation.
+© 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG. All rights reserved.

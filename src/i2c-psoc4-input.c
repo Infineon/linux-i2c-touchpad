@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR MIT
 /*
- * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.
+ * Copyright (C) 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG.
+ * All rights reserved.
  *
  * Licensed under either of
  *
@@ -73,18 +73,18 @@ int psoc4_input_dev_create(struct i2c_client *client)
 	// Using ABS_MT_* types
 	input_set_abs_params(touchpad_input_dev, ABS_MT_POSITION_X, 0, max_x, 0, 0);
 	input_set_abs_params(touchpad_input_dev, ABS_MT_POSITION_Y, 0, max_y, 0, 0);
-#if REPORT_PRESSURE
+#if defined(REPORT_PRESSURE)
 	input_set_abs_params(touchpad_input_dev, ABS_MT_PRESSURE, 0, max_pressure, 0, 0);
-#endif
+#endif /* #if defined(REPORT_PRESSURE) */
 
-#if REPORT_LEGACY_COORDS
+#if defined(REPORT_LEGACY_COORDS)
 	// Legacy coordinates can also be preserved separately if needed
 	input_set_abs_params(touchpad_input_dev, ABS_X, 0, max_x, 0, 0);
 	input_set_abs_params(touchpad_input_dev, ABS_Y, 0, max_y, 0, 0);
-#if REPORT_PRESSURE
+#if defined(REPORT_PRESSURE)
 	input_set_abs_params(touchpad_input_dev, ABS_PRESSURE, 0, max_pressure, 0, 0);
-#endif
-#endif
+#endif /* #if defined(REPORT_PRESSURE) */
+#endif /* #if defined(REPORT_LEGACY_COORDS) */
 
 	// Init slots for multi-touch
 	ret = input_mt_init_slots(touchpad_input_dev, 2, INPUT_MT_POINTER);
@@ -139,9 +139,9 @@ void psoc4_input_report_coord(struct i2c_client *client, u8 num_touches,
 		input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, true);
 		input_report_abs(touchpad_input_dev, ABS_MT_POSITION_X, touches[slot].x);
 		input_report_abs(touchpad_input_dev, ABS_MT_POSITION_Y, touches[slot].y);
-	#if REPORT_PRESSURE
+	#if defined(REPORT_PRESSURE)
 		input_report_abs(touchpad_input_dev, ABS_MT_PRESSURE, touches[slot].z);
-	#endif
+	#endif /* #if defined(REPORT_PRESSURE) */
 	}
 
 	for (int slot = 0; slot < NUM_TOUCH_SLOTS; slot++) {
@@ -151,16 +151,16 @@ void psoc4_input_report_coord(struct i2c_client *client, u8 num_touches,
 			input_mt_report_slot_state(touchpad_input_dev, MT_TOOL_FINGER, false);
 	}
 
-#if REPORT_LEGACY_COORDS
+#if defined(REPORT_LEGACY_COORDS)
 	// Legacy coordinates for the first touch point
 	if (num_touches >= 1) {
 		input_report_abs(touchpad_input_dev, ABS_X, touches[0].x);
 		input_report_abs(touchpad_input_dev, ABS_Y, touches[0].y);
-	#if REPORT_PRESSURE
+	#if defined(REPORT_PRESSURE)
 		input_report_abs(touchpad_input_dev, ABS_PRESSURE, touches[0].z);
-	#endif
+	#endif /* #if defined(REPORT_PRESSURE) */
 	}
-#endif
+#endif /* #if defined(REPORT_LEGACY_COORDS) */
 
 	input_sync(touchpad_input_dev);
 }
@@ -230,6 +230,7 @@ void psoc4_input_report_gesture(struct i2c_client *client, u32 gestures)
 		}
 	}
 
+#if defined(TOUCHDOWN_LIFTOFF_ON_GESTURE)
 	if (gestures & GEST_TOUCHDOWN) {
 		dev_dbg(&client->dev, "Touchdown event detected\n");
 		input_report_key(touchpad_input_dev, GEST_TOUCHDOWN_KEY, 1);
@@ -241,6 +242,22 @@ void psoc4_input_report_gesture(struct i2c_client *client, u32 gestures)
 		input_report_key(touchpad_input_dev, GEST_TOUCHDOWN_KEY, 0);
 		input_sync(touchpad_input_dev);
 	}
+#endif /* #if defined(TOUCHDOWN_LIFTOFF_ON_GESTURE) */
+}
+
+void psoc4_input_report_liftoff_touchdown(struct i2c_client *client, u8 num_touches)
+{
+	if (!touchpad_input_dev) {
+		dev_err(&client->dev, "Trying to report liftoff/touchdown, but input device not registered\n");
+		return;
+	}
+
+	if (num_touches != 0)
+		input_report_key(touchpad_input_dev, GEST_TOUCHDOWN_KEY, 1);
+	else
+		input_report_key(touchpad_input_dev, GEST_TOUCHDOWN_KEY, 0);
+
+	input_sync(touchpad_input_dev);
 }
 
 void report_instant_event(u32 key_code)

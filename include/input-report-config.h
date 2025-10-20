@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 OR MIT */
 /*
- * Copyright (C) 2025 Cypress Semiconductor Corporation (an Infineon company) or
- * an affiliate of Cypress Semiconductor Corporation.
+ * Copyright (C) 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG.
+ * All rights reserved.
  *
  * Licensed under either of
  *
@@ -47,12 +47,6 @@
 
 #ifndef INPUT_REPORT_CONFIG_H
 #define INPUT_REPORT_CONFIG_H
-
-// Enable/disable legacy coordinates reporting to input subsystem
-#define REPORT_LEGACY_COORDS		0
-
-// Enable/disable ABS_PRESSURE/ABS_MT_PRESSURE reporting to input subsystem
-#define REPORT_PRESSURE				0
 
 // Gesture key mappings
 #define GEST_SINGLE_CLICK_KEY	KEY_PLAYPAUSE

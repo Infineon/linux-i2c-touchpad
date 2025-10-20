@@ -52,7 +52,7 @@ dpkg -l bc bison flex libssl-dev make wget libncurses-dev device-tree-compiler b
 ```
 If any package is not installed, its status will be "un" (not installed). If installed, the status will be "ii" (installed).
 
-![Needed Packages checking](images/apt_pkj_checking.png) 
+![Needed Packages checking](images/apt_pkj_checking.png)
 
 ## Custom configuration
 
@@ -90,6 +90,47 @@ For example, you can change which Linux key code is reported for each gesture:
 #define GEST_LIFTOFF_KEY        BTN_TOUCH
 ```
 Edit these defines to match your application requirements or preferred key codes.
+
+
+### Build Options in Makefile
+
+You can customize the driver build by specifying feature flags in the `BUILD_OPTIONS` variable in your Makefile, or by passing them via the command line:
+
+```Makefile
+BUILD_OPTIONS += REPORT_LEGACY_COORDS
+BUILD_OPTIONS += REPORT_PRESSURE
+BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_GESTURE
+BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_IRQ
+```
+
+Or from the command line:
+```sh
+make BUILD_OPTIONS="REPORT_LEGACY_COORDS REPORT_PRESSURE"
+```
+
+#### Available BUILD_OPTIONS
+
+- `REPORT_LEGACY_COORDS` — Enables legacy coordinate reporting (ABS_X, ABS_Y) in addition to multi-touch axes.
+- `REPORT_PRESSURE` — Enables pressure reporting (ABS_PRESSURE and ABS_MT_PRESSURE) for touch events.
+- `TOUCHDOWN_LIFTOFF_ON_GESTURE` — touchdown/liftoff events are generated immediately after touchdown/liftoff are detected as gestures.
+- `TOUCHDOWN_LIFTOFF_ON_IRQ` — touchdown/liftoff events are generated after touchdown/liftoff interrupt is received. **Mutually exclusive with TOUCHDOWN_LIFTOFF_ON_GESTURE.**
+
+You can enable or disable these options as needed for your application. Only one of `TOUCHDOWN_LIFTOFF_ON_GESTURE` or `TOUCHDOWN_LIFTOFF_ON_IRQ` should be enabled at a time.
+
+By default (without changing build parameters), `TOUCHDOWN_LIFTOFF_ON_GESTURE` is used.
+
+#### Example: Enabling Features
+
+To switch touchdown/liftoff event reporting to IRQ-based:
+```Makefile
+BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_IRQ
+# BUILD_OPTIONS += TOUCHDOWN_LIFTOFF_ON_GESTURE
+```
+
+Or pass options via command line for one-off builds:
+```sh
+make BUILD_OPTIONS="TOUCHDOWN_LIFTOFF_ON_IRQ"
+```
 
 ## Build Steps
 
@@ -170,7 +211,7 @@ Before building the driver, update your Raspberry Pi OS to the latest version an
 
 ### 2. Prepare the Kernel Sources
 
-> **Note:** To build the module, the module and kernel source directories must have permissions of at least 755. The owner and group of these directories should be set to your current user and group. 
+> **Note:** To build the module, the module and kernel source directories must have permissions of at least 755. The owner and group of these directories should be set to your current user and group.
 
 Prepare the kernel sources according to your Raspberry Pi:
 
@@ -183,7 +224,7 @@ make bcm2711_defconfig
 
 This step sets up the default kernel configuration for your board. The `KERNEL` variable is used for further build steps and should match your hardware.
 
-![Defconfig Screenshoot](images/defconfig.png) 
+![Defconfig Screenshoot](images/defconfig.png)
 
 After configuring the kernel sources, you also need to download the matching `Module.symvers` file from GitHub. This file is required for building external kernel modules.
 
@@ -205,7 +246,7 @@ Navigate to the root directory of the driver source code and run:
 make ARCH=arm64 KERNEL_SOURCES=~/linux
 ```
 
-![Build Kernel Module](images/build_kernel_module.png) 
+![Build Kernel Module](images/build_kernel_module.png)
 
 This will invoke the top-level `Makefile` and build both the driver and the device tree overlay. The compiled kernel module (`i2c-psoc4-driver.ko`) and the device tree overlay (`psoc4-capsense.dtbo`) will be placed in the `output/` directory.
 
@@ -279,4 +320,4 @@ Reboot system to apply changes:
 - Use `dmesg` to check for any kernel messages related to the driver after loading it.
 
 ---
-© 2025, Cypress Semiconductor Corporation (an Infineon company) or an affiliate of Cypress Semiconductor Corporation.
+© 2025, Infineon Technologies AG, or an affiliate of Infineon Technologies AG. All rights reserved.
